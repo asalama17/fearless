@@ -15,7 +15,7 @@ breweries_data_cleaned %>%
   mutate(Count = n()) %>%
   select(State, Count) %>%
   ggplot(mapping = aes(x = State, y = Count)) +
-  geom_bar(stat = "identity")
+  geom_bar(stat = "identity") + ggtitle("Number of breweries in each state")
 
 # 2.	Merge beer data with the breweries data. Print the first 6 observations
 breweries_beer <- breweries_data_cleaned %>% 
