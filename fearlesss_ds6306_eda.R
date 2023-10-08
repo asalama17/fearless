@@ -3,6 +3,7 @@ library(tidyverse)
 library(dplyr)
 library(GGally)
 
+#test
 breweries_data_raw <- read.csv("Breweries.csv", header = TRUE)
 breweries_data_cleaned <- breweries_data_raw
 
