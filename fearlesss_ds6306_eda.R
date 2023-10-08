@@ -42,7 +42,7 @@ missing_values_df <- data.frame(
 
 missing_values_df %>%
   ggplot(mapping = aes(x = column_name, y = missing_values_count)) +
-  geom_bar(stat = "identity")
+  geom_bar(stat = "identity") + ggtitle("Number of missing values in columns")
 
 # TODO: fix missing values by mean of city & style:
 breweries_beer %>% group_by(City,State,Style) %>%
