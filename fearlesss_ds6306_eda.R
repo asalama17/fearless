@@ -1,9 +1,18 @@
 
+###
+  # title: "DS6306 - EDA"
+  # output: R Script
+  # Author(s): Ahmad Salama & Almuhannad Qneis
+  # date: "2023-10-08"
+###
+
+# load libraries:
 library(tidyverse)
 library(dplyr)
 library(GGally)
+###
 
-#test
+# load data:
 breweries_data_raw <- read.csv("Breweries.csv", header = TRUE)
 breweries_data_cleaned <- breweries_data_raw
 
