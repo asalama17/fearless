@@ -73,6 +73,25 @@ state_mean_ibu <- state_mean_ibu %>% rename_at("IBU", ~'Mean')
 
 state_mean_abv_ibu <- rbind(state_mean_abv, state_mean_ibu)
 
+###MEDIAN ALCOHOL
+state_median_abv_ibu <- breweries_beer %>% group_by(State) %>%
+  select(ABV, IBU) %>%
+  summarize_at(vars(ABV, IBU), median, na.rm = TRUE)
+
+state_median_abv <- breweries_beer %>% group_by(State) %>%
+  select(ABV) %>%
+  summarize_at(vars(ABV), median, na.rm = TRUE) %>%
+  mutate(Type = "ABV")
+state_median_abv <- state_median_abv %>% rename_at("ABV", ~'Median')
+
+state_median_ibu <- breweries_beer %>% group_by(State) %>%
+  select(IBU) %>%
+  summarize_at(vars(IBU), median, na.rm = TRUE) %>%
+  mutate(Type = "IBU")
+state_median_ibu <- state_median_ibu %>% rename_at("IBU", ~'Median')
+
+state_median_abv_ibu <- rbind(state_median_abv, state_median_ibu)
+
 
 # 5. Which state has the maximum alcoholic (ABV) beer? Which state has the most bitter (IBU) beer?
 state_mean_abv_ibu %>% 
