@@ -1,6 +1,6 @@
 
 ###
-  # title: "DS6306 - EDA"
+  # title: "DS6306 - Analyzing US Craft Beers and Breweries - Case Study"
   # output: R Script
   # Author(s): Ahmad Salama & Almuhannad Qneis
   # date: "2023-10-08"
@@ -10,8 +10,12 @@
 library(tidyverse)
 library(dplyr)
 library(GGally)
+library(ggplot2)
+library(ggthemes)
 ###
 
+# set working directory:
+setwd("./data")
 # load data:
 breweries_data_raw <- read.csv("Breweries.csv", header = TRUE)
 breweries_data_cleaned <- breweries_data_raw
@@ -20,12 +24,19 @@ beers_data_raw <- read.csv("Beers.csv", header = TRUE)
 beers_data_cleaned <- beers_data_raw
 
 # 1. How many breweries are present in each state?
+
+# check if there is any missing data:
+breweries_missing_data_df <- breweries_data_cleaned %>% sapply(function(x) sum(is.na(x))) #no missing data.
+
 breweries_data_cleaned %>% 
   group_by(State) %>%
   mutate(Count = n()) %>%
   select(State, Count) %>%
-  ggplot(mapping = aes(x = State, y = Count)) +
-  geom_bar(stat = "identity") + ggtitle("Number of breweries in each state")
+  ggplot(mapping = aes(x = reorder(State, +Count), y = Count)) +
+  geom_bar(stat = "identity") + 
+  ggtitle("Brewery Count by State") +
+  xlab("State") +
+  theme_economist()
 
 # 2.	Merge beer data with the breweries data. Print the first 6 observations
 breweries_beer <- breweries_data_cleaned %>% 
@@ -36,23 +47,24 @@ head(breweries_beer)
 # maybe assign the average value per city\state for missing values?
 
 breweries_beer %>% sapply(function(x) sum(is.na(x))) 
-# %>%
-#   select_if(is.na(x) == TRUE)
-
-names(which(colSums(is.na(breweries_beer)) > 0))
 
 columns_with_missing_values <- names(which(sapply(breweries_beer, function(x) sum(is.na(x)) > 0)))
+
 missing_values_count <- breweries_beer %>%
   sapply(function(x) sum(is.na(x)))
 
 missing_values_df <- data.frame(
-  column_name = columns_name_with_missing_values,
-  missing_values_count = as.vector(sapply(columns_name_with_missing_values, function(x) missing_values_count[x]))
+  column_name = columns_with_missing_values,
+  missing_values_total = as.vector(sapply(columns_with_missing_values, function(x) missing_values_count[x]))
 )
 
 missing_values_df %>%
-  ggplot(mapping = aes(x = column_name, y = missing_values_count)) +
-  geom_bar(stat = "identity") + ggtitle("Number of missing values in columns")
+  ggplot(mapping = aes(x = column_name, y = missing_values_total)) +
+  geom_bar(stat = "identity") + 
+  ggtitle("Missing values Count by Column") +
+  xlab("Missing Stat Column Name") +
+  ylab("Count") +
+  theme_economist()
 
 # TODO: fix missing values by mean of city & style:
 breweries_beer %>% group_by(City,State,Style) %>%
