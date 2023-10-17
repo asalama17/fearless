@@ -29,17 +29,8 @@ library(usdata)
 setwd("./data")
 
 ```
-```{r load breweries data}
-breweries_data_raw <- read.csv("Breweries.csv", header = TRUE, stringsAsFactors = FALSE)
-# trim character values in the data
-breweries_data_cleaned <- breweries_data_raw %>% 
-  sapply(function(x) if(is.character(x)) str_squish(x) else x)
-breweries_data_cleaned <- as.data.frame(breweries_data_cleaned)
-breweries_data_cleaned$Brew_ID <- as.integer(breweries_data_cleaned$Brew_ID)
+```{r load data}
 
-summary(breweries_data_cleaned)
-head(breweries_data_cleaned)
-```
 ```
 
 ```{r cars}

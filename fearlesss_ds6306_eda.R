@@ -9,7 +9,6 @@
 # load libraries:
 library(tidyverse)
 library(dplyr)
-library(dplyr)
 library(GGally)
 library(ggplot2)
 library(ggthemes)
@@ -20,20 +19,30 @@ library(usdata)
 # set working directory:
 setwd("./data")
 
-# load data:
-breweries_data_raw <- read.csv("Breweries.csv", header = TRUE)
+# load breweries data:
+breweries_data_raw <- read.csv("Breweries.csv", header = TRUE, stringsAsFactors = FALSE)
+# trim character values in the data
 breweries_data_cleaned <- breweries_data_raw %>% 
-  sapply(function(x) str_squish(x))
+  sapply(function(x) if(is.character(x)) str_squish(x) else x)
+breweries_data_cleaned <- as.data.frame(breweries_data_cleaned)
+breweries_data_cleaned$Brew_ID <- as.integer(breweries_data_cleaned$Brew_ID)
 
-beers_data_raw <- read.csv("Beers.csv", header = TRUE)
+summary(breweries_data_cleaned)
+head(breweries_data_cleaned)
+
+beers_data_raw <-  as.data.frame(read.csv("Beers.csv", header = TRUE))
 beers_data_cleaned <- beers_data_raw 
-
+# change ABV from character to numeric values
 beers_data_cleaned$ABV = as.numeric(beers_data_cleaned$ABV)
 
-breweries_data_cleaned$StateFullName <- 
-  tolower(abbr2state(str_squish(breweries_data_cleaned$State)))
-
 breweries_data_cleaned$State <- as.factor(str_squish(breweries_data_cleaned$State))
+
+us_states <- data.frame(
+  StateAbb = state.abb,
+  StateName = state.name
+)
+
+
 
 # 1. How many breweries are present in each state?
 
@@ -43,15 +52,16 @@ breweries_missing_data_df <- breweries_data_cleaned %>% sapply(function(x) sum(i
 breweries_state_count <- breweries_data_cleaned %>% 
   group_by(State) %>%
   mutate(Count = n()) %>%
-  mutate(CenterLong = state.center$x) %>%
-  select(StateFullName, State, Count)
+  select(State, Count)
 
 breweries_data_cleaned %>%
-  ggplot(mapping = aes(x = State)) +
+  ggplot(mapping = aes(x = reorder(State, breweries_state_count$Count))) +
   geom_bar(stat = "count") + 
   ggtitle("Brewery Count by US State") +
   xlab("State") +
   ylab("Count") +
+  stat_count(geom = "text", colour = "white", size = 3.5,
+             aes(label = ..count..),position=position_stack(vjust=0.75)) +
   theme_economist()
 
 us_states <- map_data("state")
@@ -61,7 +71,7 @@ merged_data <- merge(breweries_state_count,snames, by.x = "StateFullName", by.y 
 merged_data %>%
 ggplot(mapping = aes(x = long, y = lat, group = group, fill = Count)) +
   geom_polygon() +
-  geom_path(color = "white", size = 0.5) +  # Add state borders
+  geom_path(color = "white", size = 1.5) +  # Add state borders
   geom_text(aes(CenterLong, CenterLatitude, label = Count), color = "white") +
   coord_fixed(ratio=1.5) +
   scale_fill_gradient(low = "lightblue", high = "darkblue", 
@@ -97,6 +107,10 @@ head(breweries_beer)
 breweries_beer %>% sapply(function(x) sum(is.na(x))) 
 summary(breweries_beer)
 
+missing <- breweries_beer %>% 
+  group_by(City) %>%
+  summarise(sum_na = sum(is.na(IBU)), total = n())
+
 # get the names of columns with missing values
 columns_with_missing_values <- names(which(sapply(breweries_beer, function(x) sum(is.na(x)) > 0)))
 
@@ -116,18 +130,37 @@ missing_values_df %>%
   ggtitle("Missing values Count by Column") +
   xlab("Missing Stat Column Name") +
   ylab("Count") +
+  geom_text(mapping = aes(x = column_name, y = missing_values_total, 
+                          label = missing_values_total),
+            stat = 'identity', position = position_dodge(.9), vjust = -0.5, hjust = 2, size = 5) +
+  geom_text(mapping = aes(x = column_name, y = missing_values_total, 
+                          label = paste0(" (",scales::percent(missing_values_total/dim(breweries_beer)[1]), ")")),
+    stat = 'identity', position = position_dodge(.9), vjust = -0.5, size = 5) +
   theme_economist()
 
 # calc mean of ABV & IBU by city, state, and style:
-abv_ibu_mean_grouped_by_style_city_state <- breweries_beer %>% 
-  #group_by(Style,City,State) %>%
-  #select(Style,City,State, ABV, IBU) %>%
-  group_by(State) %>%
+abv_ibu_mean_grouped_by_style_city <- breweries_beer %>% 
+  group_by(Style, City) %>%
+  summarize(IBU = mean(.data[["IBU"]], na.rm = TRUE), ABV  = mean(.data[["ABV"]], na.rm = TRUE))
+
+abv_ibu_mean_grouped_by_city <- breweries_beer %>% 
+  group_by(City) %>%
+  select(City,ABV, IBU) %>%
+  summarize_at(vars(ABV, IBU), mean, na.rm = TRUE)
+
+abv_ibu_mean_grouped_by_style <- breweries_beer %>% 
+  group_by(Style) %>%
   select(Style,ABV, IBU) %>%
   summarize_at(vars(ABV, IBU), mean, na.rm = TRUE)
 
+missing_values_count <- abv_ibu_mean_grouped_by_style_city %>%
+  sapply(function(x) sum(is.na(x)))
+
+missing_values_count <- abv_ibu_mean_grouped_by_style %>%
+  sapply(function(x) sum(is.na(x)))
+
 # is there any more missing values:
-abv_ibu_mean_grouped_by_style_city_state %>% 
+abv_ibu_mean_grouped_by_city %>% 
   sapply(function(x) sum(is.na(x)))
 
 
@@ -135,25 +168,70 @@ for(i in 1:nrow(breweries_beer)) {
   print(i)
   row = breweries_beer[i,]
   if(is.na(breweries_beer[i,"ABV"])) {
-    sub_abv = abv_ibu_mean_grouped_by_style_city_state %>%
+    sub_abv = abv_ibu_mean_grouped_by_style_city %>%
       #filter(Style == row["Style"], City == row["City"], State == row["State"])
-      filter(State == row["State"])
+      filter(City == row["City"])
+    breweries_beer[i,"ABV"] <- sub_abv[1,"ABV"]
+  }
+  
+  if(is.na(breweries_beer[i,"IBU"])) {
+    sub_ibu = abv_ibu_mean_grouped_by_style_city %>% 
+      #filter(Style == row["Style"], City == row["City"], State == row["State"]) 
+      filter(City == row["City"])
+    breweries_beer[i,"IBU"] <- sub_ibu[1,"IBU"]
+    if(nrow(sub_ibu) > 0 & !is.na(sub_ibu[1,"IBU"])) {
+     
+    }
+  }
+}
+
+for(i in 1:nrow(breweries_beer)) {
+  print(i)
+  row = breweries_beer[i,]
+  if(is.na(breweries_beer[i,"ABV"])) {
+    sub_abv = abv_ibu_mean_grouped_by_style %>%
+      #filter(Style == row["Style"], City == row["City"], State == row["State"])
+      filter(Style == row["Style"])
     breweries_beer[i,"ABV"] <- sub_abv[1,"ABV"]
     if(nrow(sub_abv) > 0 & !is.na(sub_abv[1,"ABV"])) {
       
     }
   }
   
-  if(is.na(row["IBU"])) {
-    sub_ibu = abv_ibu_mean_grouped_by_style_city_state %>% 
+  if(is.na(breweries_beer[i,"IBU"])) {
+    sub_ibu = abv_ibu_mean_grouped_by_style %>% 
       #filter(Style == row["Style"], City == row["City"], State == row["State"]) 
-      filter(State == row["State"])
+      filter(Style == row["Style"])
     breweries_beer[i,"IBU"] <- sub_ibu[1,"IBU"]
     if(nrow(sub_ibu) > 0 & !is.na(sub_ibu[1,"IBU"])) {
-     
+      
     }
   }
- }
+}
+
+for(i in 1:nrow(breweries_beer)) {
+  print(i)
+  row = breweries_beer[i,]
+  if(is.na(breweries_beer[i,"ABV"])) {
+    sub_abv = abv_ibu_mean_grouped_by_city %>%
+      #filter(Style == row["Style"], City == row["City"], State == row["State"])
+      filter(City == row["City"])
+    breweries_beer[i,"ABV"] <- sub_abv[1,"ABV"]
+    if(nrow(sub_abv) > 0 & !is.na(sub_abv[1,"ABV"])) {
+      
+    }
+  }
+  
+  if(is.na(breweries_beer[i,"IBU"])) {
+    sub_ibu = abv_ibu_mean_grouped_by_city %>% 
+      #filter(Style == row["Style"], City == row["City"], State == row["State"]) 
+      filter(City == row["City"])
+    breweries_beer[i,"IBU"] <- sub_ibu[1,"IBU"]
+    if(nrow(sub_ibu) > 0 & !is.na(sub_ibu[1,"IBU"])) {
+      
+    }
+  }
+}
 
 # get the names of columns with missing values
 columns_with_missing_values <- names(which(sapply(breweries_beer, function(x) sum(is.na(x)) > 0)))
