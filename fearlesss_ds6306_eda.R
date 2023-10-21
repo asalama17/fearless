@@ -98,17 +98,18 @@ head(beer_breweries)
 
 # 3.	Address the missing values in each column:
 
+# place holder for data with missing values
+beer_breweries_with_missing_values <- beer_breweries
+
 # calc mean for IBU and ABV before the handling of missing values
-beer_breweries %>% 
-  summarize(IBU = mean(.data[["IBU"]], na.rm = TRUE), ABV  = mean(.data[["ABV"]], na.rm = TRUE))
+beer_breweries_summary_with_missing_values <- beer_breweries_with_missing_values %>% 
+  summarize(IBU_Mean = mean(.data[["IBU"]], na.rm = TRUE),
+            ABV_Mean  = mean(.data[["ABV"]], na.rm = TRUE),
+            IBU_Median  = median(.data[["IBU"]], na.rm = TRUE), 
+            ABV_Median  = median(.data[["ABV"]], na.rm = TRUE))
 
 beer_breweries %>% sapply(function(x) sum(is.na(x))) 
 
-missing_values_count <- abv_ibu_mean_grouped_by_style_city %>%
-  sapply(function(x) sum(is.na(x)))
-
-missing_values_count <- abv_ibu_mean_grouped_by_style %>%
-  sapply(function(x) sum(is.na(x)))
 
 missing_values_by_state <- beer_breweries %>% 
   group_by(State) %>%
@@ -125,10 +126,6 @@ missing_values_by_state %>% ggplot(mapping = aes(x = reorder(State, +count))) +
   #scale_fill_identity(name = '', guide = 'legend',labels = c('IBV NA', 'IBU NA', 'Total Observations')) +
   scale_fill_manual(values = c("Total Observations" = "grey27", "IBU NA" = "forestgreen", "ABV NA" = "firebrick1")) +
   theme_economist()
-
-missing <- beer_breweries %>% 
-  group_by(City) %>%
-  summarise(sum_na = sum(is.na(IBU)), total = n())
 
 plot_missing_values(beer_breweries)
 
@@ -197,13 +194,57 @@ for(i in 1:nrow(beer_breweries)) {
   }
 }
 beer_breweries %>% sapply(function(x) sum(is.na(x)))
-
-
 plot_missing_values(beer_breweries)
 
-# calc mean for IBU and ABV after the handling of missing values
-beer_breweries %>% 
-  summarize(IBU = mean(.data[["IBU"]], na.rm = TRUE), ABV  = mean(.data[["ABV"]], na.rm = TRUE))
+#compare mean & median before and after fixing the values:
+# calc mean for IBU and ABV before the handling of missing values
+beer_breweries_summary_after_fixing_missing_values <- beer_breweries %>% 
+  summarize(IBU_Mean = mean(.data[["IBU"]], na.rm = TRUE),
+            ABV_Mean  = mean(.data[["ABV"]], na.rm = TRUE),
+            IBU_Median  = median(.data[["IBU"]], na.rm = TRUE), 
+            ABV_Median  = median(.data[["ABV"]], na.rm = TRUE))
+
+# ABV mean before & after:
+ggplot() +
+  geom_boxplot(data = beer_breweries_with_missing_values,
+               mapping = aes(x = 0, y = ABV)) +
+  geom_point(data = beer_breweries_summary_with_missing_values,
+             mapping = aes(x = 0, y = ABV_Mean), color = "red", shape = 18, size = 4) +
+  geom_text(data = beer_breweries_summary_with_missing_values,
+            mapping = aes(x = 0, y = ABV_Mean,
+                          label = round(ABV_Mean, 3)), vjust = -0.75, color = "red") +
+  geom_boxplot(data = beer_breweries,
+               mapping = aes(x = 1, y = ABV)) +
+  geom_point(data = beer_breweries_summary_after_fixing_missing_values,
+             mapping = aes(x = 1, y = ABV_Mean), color = "red", shape = 18, size = 4) +
+  geom_text(data = beer_breweries_summary_after_fixing_missing_values,
+            mapping = aes(x = 1, y = ABV_Mean,
+                          label = round(ABV_Mean, 3)), vjust = -0.75, color = "red") +
+  ggtitle("ABV Distribution With & Without Missing Values Comparison") +
+  xlab("") +
+  ylab("ABV") +
+  theme_economist()
+
+# IBU mean before & after:
+ggplot() +
+  geom_boxplot(data = beer_breweries_with_missing_values,
+               mapping = aes(x = 0, y = IBU)) +
+  geom_point(data = beer_breweries_summary_with_missing_values,
+             mapping = aes(x = 0, y = IBU_Mean), color = "red", shape = 18, size = 4) +
+  geom_text(data = beer_breweries_summary_with_missing_values,
+            mapping = aes(x = 0, y = IBU_Mean,
+                          label = round(IBU_Mean, 3)), vjust = -0.75, color = "red") +
+  geom_boxplot(data = beer_breweries,
+               mapping = aes(x = 1, y = IBU)) +
+  geom_point(data = beer_breweries_summary_after_fixing_missing_values,
+             mapping = aes(x = 1, y = IBU_Mean), color = "red", shape = 18, size = 4) +
+  geom_text(data = beer_breweries_summary_after_fixing_missing_values,
+            mapping = aes(x = 1, y = IBU_Mean,
+                          label = round(IBU_Mean, 3)), vjust = -0.75, color = "red") +
+  ggtitle("IBU Distribution With & Without Missing Values Comparison") +
+  xlab("") +
+  ylab("IBU") +
+  theme_economist()
 
 # 4. Compute the median alcohol content and international bitterness unit for each state. Plot a bar chart to compare:
 
@@ -222,7 +263,7 @@ state_median_abv_ibu %>%
   geom_text(mapping = aes(reorder(State, +ABV), y = ABV, 
                           label = paste0("             ", ABV), angle = 90),
             stat = 'identity', position = position_dodge(.9), size = 4, color = "red") +
-  geom_hline(yintercept = median(state_median_abv_ibu$ABV, na.rm = TRUE), linetype = "dashed",
+  geom_hline(yintercept = median(state_median_abv_ibu$ABV, na.rm = TRUE), linetype = "solid",
              color = "blue") +
   theme_economist()
 
@@ -281,6 +322,7 @@ max_abv_by_state %>%
 # calc max ibu by state
 max_ibu_by_state <- beer_breweries %>% 
   group_by(State) %>%
+  filter(State != "SD") %>%
   summarise(max_IBU = max(IBU, na.rm = TRUE)) %>%
   select(State, max_IBU)
 
@@ -319,12 +361,18 @@ beer_breweries %>%
 
 # create visualizations for the relationship between ABV & IBU
 beer_breweries %>%
-  select(ABV, IBU) %>%
   ggplot(mapping = aes(x = ABV, y = IBU)) +
   geom_point(na.rm = TRUE) +
   geom_smooth() +
   ggtitle("Alcohol Content (ABV) vs Bitterness (IBU)") +
   theme_economist()
+
+# beer_breweries %>%
+#   ggplot(mapping = aes(x = ABV, y = IBU)) +
+#   geom_point(na.rm = TRUE) +
+#   facet_grid(ABV + IBU ~ State) +
+#   ggtitle("Alcohol Content (ABV) vs Bitterness (IBU)") +
+#   theme_economist()
 
 beer_breweries %>% 
   select(ABV, IBU) %>%
