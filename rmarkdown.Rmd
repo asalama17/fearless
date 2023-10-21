@@ -397,7 +397,6 @@ beer_breweries %>%
 
 ```{r 7.relationship between the bitterness of the beer and its alcoholic content}
 # create visualizations for the relationship between ABV & IBU
-# create visualizations for the relationship between ABV & IBU
 beer_breweries %>%
   ggplot(mapping = aes(x = ABV, y = IBU)) +
   geom_point(na.rm = TRUE) +
@@ -415,4 +414,6 @@ beer_breweries %>%
 beer_breweries %>% 
   select(ABV, IBU) %>%
   ggpairs(columns = c("ABV", "IBU"))
+```
+```{r 8.Difference with respect to IBU and ABV between IPAs  & ALE}
 ```

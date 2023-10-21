@@ -386,7 +386,7 @@ beer_breweries %>%
   # Provide statistical evidence one way or the other. You can of course assume your audience is comfortable with percentages
   # feel free to supplement your response to this question with any other methods or techniques you have learned.   
 
-beer_breweries$Is_IPA = ifelse(str_detect(beer_breweries$Style, "IPA"), TRUE, FALSE)
+beer_breweries$Is_IPA = ifelse(str_detect(beer_breweries$Style, regex("IPA", ignore_case = TRUE)), TRUE, FALSE)
 beer_breweries$Is_ALE = ifelse(!str_detect(beer_breweries$Style, regex("IPA", ignore_case = TRUE)) & (str_detect(beer_breweries$Beer_Name, regex("Ale", ignore_case = TRUE)) |
                                                                                                         str_detect(beer_breweries$Style, regex("Ale", ignore_case = TRUE))) , TRUE, FALSE)
 
@@ -399,7 +399,9 @@ beer_breweries_with_beer_type <- beer_breweries %>%
 beer_type_abv_ibu_summary <- beer_breweries_with_beer_type %>% 
   #filter(Beer_TYPE == "ALE") %>%
   group_by(Beer_TYPE) %>%
-  summarize(ibu_mean = mean(IBU), ibu_median = median(IBU), abv_mean = mean(ABV), abv_median = median(ABV))
+  summarize(ibu_mean = mean(IBU), ibu_median = median(IBU),
+            abv_mean = mean(ABV), abv_median = median(ABV),
+            abv_sd = sd(ABV), ibu_sd = sd(IBU))
   
   
 # box plot to compare IBU distribution in ALE & IPA
@@ -437,22 +439,36 @@ beer_breweries_with_beer_type %>%
   xlab("Beer Type") +
   theme_economist()
 
-
 beer_breweries_with_beer_type %>%
-  ggplot(mapping = aes(x = IBU, y = ABV, color = Beer_TYPE)) +
+  ggplot(mapping = aes(x = ABV, y = IBU, color = Beer_TYPE)) +
   geom_point() +
-  scale_y_continuous(breaks = seq(0, 0.2, by = 0.01)) +
-  scale_x_continuous(breaks = seq(0, 180, by = 20)) +
+  scale_y_continuous(breaks = seq(0, 160, by = 20)) +
+  scale_x_continuous(breaks = seq(0, 0.8, by = 0.02)) +
   ggtitle("ABV & IBU Distribution By Beer Type") +
   xlab("IBU") +
   theme_economist()
 
 beer_breweries_with_beer_type %>% 
-  select(ABV, IBU, Beer_TYPE) %>%
-  ggpairs(columns = c("ABV", "Beer_TYPE"))
+  select(ABV_Scaled, Beer_TYPE) %>%
+  ggpairs(columns = c("ABV_Scaled", "Beer_TYPE"))
 
 #KNN:
+
+
 set.seed(4)
+
+#scale ABV & IBU for k-NN model:
+beer_breweries_with_beer_type$ABV_Scaled <- as.numeric((beer_breweries_with_beer_type$ABV - mean(beer_breweries_with_beer_type$ABV)) / sd(beer_breweries_with_beer_type$ABV))
+beer_breweries_with_beer_type$IBU_Scaled <- as.numeric((beer_breweries_with_beer_type$IBU - mean(beer_breweries_with_beer_type$IBU)) / sd(beer_breweries_with_beer_type$IBU))
+
+beer_breweries_with_beer_type %>%
+  ggplot(mapping = aes(x = ABV_Scaled, y = IBU_Scaled, color = Beer_TYPE)) +
+  geom_point() +
+  ggtitle("ABV Scaled & IBU Scaled Distribution By Beer Type") +
+  xlab("ABV Scaled") +
+  theme_economist()
+
+
 split_perc <- 0.70 
 n <- dim(beer_breweries_with_beer_type)[1]
 k_iterations <- 100
@@ -483,7 +499,7 @@ for(i in 1:k_iterations) {
     beer_training_set <- beer_breweries_with_beer_type[indices,]
     beer_testing_set <- beer_breweries_with_beer_type[-indices,]
     # use knn, formula: Beer Type ~ ABV + IBU
-    model <- knn(train = beer_training_set[, c("ABV", "IBU")], test = beer_testing_set[, c("ABV", "IBU")],
+    model <- knn(train = beer_training_set[, c("ABV_Scaled1", "IBU_Scaled1")], test = beer_testing_set[, c("ABV_Scaled1", "IBU_Scaled1")],
                  cl = beer_training_set$Beer_TYPE, k = i, prob = FALSE)
     # create the confusion matrix
     cm <- confusionMatrix(data = model, reference = beer_testing_set$Beer_TYPE)
