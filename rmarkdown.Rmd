@@ -13,10 +13,6 @@ Our analysis aims to explore the data and report any noteworthy observations tha
 
 Now, let's delve into our analysis by addressing the questions you've outlined and any additional insights we've uncovered during our data exploration.
 
-```{r setup, include=TRUE}
-
-```
-
 ```{r load libraries}
 
 # load libraries
@@ -575,10 +571,10 @@ model <- knn(train = beer_training_set[, c("ABV", "IBU")], test = beer_testing_s
              cl = beer_training_set$Beer_TYPE, k = 85)
 # create a confusion matrix:
 cm <- confusionMatrix(data = model, reference = beer_testing_set$Beer_TYPE)
-
 ```
-```{r 9 Added distribution of ABV and IBU in the state of COlorado}
-#Ploted ABV and IBU by City in state of Colorado
+
+```{r 9. ABV & IBU Distribution By City in the State Of Colorado.}
+#plot ABV and IBU by City in state of Colorado
 beer_breweries_with_beer_type %>% 
   filter(State == "CO")%>% 
   group_by(City) %>% 
@@ -589,5 +585,3 @@ beer_breweries_with_beer_type %>%
   xlab("ABV") +
   theme_economist()
 ```
-
-
