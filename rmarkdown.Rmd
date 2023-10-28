@@ -7,15 +7,15 @@ output: html_document
 
 ## Introduction
 
-Ladies and Gentlemen, CEO and CFO of Budweiser, we are honored to present to you our analysis of the data you've provided to us. Our objective is to uncover any exciting insights from the data you've provided, and we have focused our analysis on addressing specific questions while keeping the explanations straightforward and accessible.
+Ladies and Gentlemen, CEO and CFO of Budweiser, my name is Ahmad, and I am joined by my college AL Muhannad.  
 
-Our analysis aims to explore the data and report any noteworthy observations that can inform your decision-making. This analysis provides an opportunity to understand your data better and discover valuable insights that may benefit Budweiser.
+We are honored to present our data exploration and analysis of the Craft beers and breweries data you have provided. Our goal is to address your specific questions and report any noteworthy observations that can inform your decision-making. 
 
-Now, let's delve into our analysis by addressing the questions you've outlined and any additional insights we've uncovered during our data exploration.
+Now, let's dive into our data exploration and analysis. 
 
 ```{r load libraries}
 
-# load libraries
+# load required libraries
 library(tidyverse)
 library(dplyr)
 library(GGally)
@@ -36,38 +36,57 @@ us_states <- data.frame(
 )
 us_state_center_geo <- data.frame(region=tolower(state.name), CenterLong=state.center$x, CenterLatitude=state.center$y)
 ```
+```{r set working directory}
+#setwd("~/fearless")
+```
 
-```{r load breweries data}
-# Set working directory
-setwd("./data")
-breweries_data_raw <- read.csv("Breweries.csv", header = TRUE, stringsAsFactors = FALSE)
-# trim character values in the data
+```{r setting a seed for predictability}
+# setting a seed for predictability
+set.seed(4)
+```
+
+
+```{r loading breweries data}
+
+#loading breweries data from csv
+breweries_data_raw <- read.csv("data/Breweries.csv", header = TRUE, stringsAsFactors = FALSE)
+# trim character values in the data and get rid of white space
 breweries_data_cleaned <- breweries_data_raw %>% 
   sapply(function(x) if(is.character(x)) str_squish(x) else x)
 breweries_data_cleaned <- as.data.frame(breweries_data_cleaned)
 breweries_data_cleaned$Brew_ID <- as.integer(breweries_data_cleaned$Brew_ID)
 
+# print summary of the breweries data set
 summary(breweries_data_cleaned)
+# print first 6 rows of the breweries data set
 head(breweries_data_cleaned)
 ```
 
 ```{r load beers data}
-# Set working directory
-setwd("./data")
-# load beers data:
-beers_data_raw <-  as.data.frame(read.csv("Beers.csv", header = TRUE))
+# load beers data from csv:
+beers_data_raw <-  as.data.frame(read.csv("data/Beers.csv", header = TRUE))
 beers_data_cleaned <- beers_data_raw 
 # change ABV from character to numeric values
 beers_data_cleaned$ABV = as.numeric(beers_data_cleaned$ABV)
 breweries_data_cleaned$State <- as.factor(str_squish(breweries_data_cleaned$State))
 
+# print summary of the beers data set
 summary(beers_data_cleaned)
+# print first 6 rows of the beers data set
 head(beers_data_cleaned)
 ```
 
-```{r 1. How many breweries are present in each state?}
-# verify that there are no missing values in the breweries data set:
-breweries_missing_data_df <- breweries_data_cleaned %>% sapply(function(x) sum(is.na(x))) #no missing data.
+```{r 1. Breweries in each state: }
+# Q1.How many breweries are present in each state?
+# 
+# Before our analysis, we reviewed the brewery data set and verified that it had all the values and no missing values. This completeness ensures the reliability and accuracy of our insights, setting the stage for a robust analysis. 
+
+# When it comes to craft breweries, our data suggest that it is Colorado that emerges as the champion with 47 breweries. California and Minnesota closely trail behind in the second and third positions, with 39 and 32 breweries, respectively. In the last place, we find Washington D.C., North Dakota, South Dakota, and West Virginia, each with only a single brewery. 
+
+# verify no missing data.
+breweries_missing_data_df <- breweries_data_cleaned %>% sapply(function(x) sum(is.na(x))) 
+
+
 
 # creating a bar plot to visualize the count of breweries in different US states.
 breweries_state_count <- breweries_data_cleaned %>% 
@@ -334,7 +353,7 @@ state_median_abv_ibu %>%
   theme_economist()
 ```
 
-```{r 5.Which state has the maximum alcoholic (ABV) beer? Which state has the most bitter (IBU) beer?}
+```{r Maximum alcoholic (ABV) beer By State & State with max maximum bitter (IBU) beer}
 # calculates and visualizes the maximum ABV & IBU by us state
 # calc max ABV by state
 max_abv_by_state <- beer_breweries %>% 
@@ -411,10 +430,8 @@ beer_breweries %>%
   select(ABV, IBU) %>%
   ggpairs(columns = c("ABV", "IBU"))
 ```
-```{r 8.Difference with respect to IBU and ABV between IPAs  & ALE}
-# 8.	Budweiser would also like to investigate the difference with respect to IBU and ABV between IPAs (India Pale Ales)
-
-###Classify data by beer type
+```{r 8.Difference with respect to IBU and ABV between IPAs and ALE}
+#Classify data by beer type
 beer_breweries$Is_IPA = ifelse(str_detect(beer_breweries$Style, regex("IPA", ignore_case = TRUE)), TRUE, FALSE)
 beer_breweries$Is_ALE = ifelse(!str_detect(beer_breweries$Style, regex("IPA", ignore_case = TRUE)) & (str_detect(beer_breweries$Beer_Name, regex("Ale", ignore_case = TRUE)) |
                                                                                                         str_detect(beer_breweries$Style, regex("Ale", ignore_case = TRUE))) , TRUE, FALSE)
@@ -476,15 +493,7 @@ beer_breweries_with_beer_type %>%
   xlab("IBU") +
   theme_economist()
 
-beer_breweries_with_beer_type %>% 
-  select(ABV_Scaled, Beer_TYPE) %>%
-  ggpairs(columns = c("ABV_Scaled", "Beer_TYPE"))
-
-#KNN:
-
-
-set.seed(4)
-
+#K-NN Modeling:
 #scale ABV & IBU for k-NN model:
 beer_breweries_with_beer_type$ABV_Scaled <- as.numeric((beer_breweries_with_beer_type$ABV - mean(beer_breweries_with_beer_type$ABV)) / sd(beer_breweries_with_beer_type$ABV))
 beer_breweries_with_beer_type$IBU_Scaled <- as.numeric((beer_breweries_with_beer_type$IBU - mean(beer_breweries_with_beer_type$IBU)) / sd(beer_breweries_with_beer_type$IBU))
@@ -527,7 +536,7 @@ for(i in 1:k_iterations) {
     beer_training_set <- beer_breweries_with_beer_type[indices,]
     beer_testing_set <- beer_breweries_with_beer_type[-indices,]
     # use knn, formula: Beer Type ~ ABV + IBU
-    model <- knn(train = beer_training_set[, c("ABV_Scaled1", "IBU_Scaled1")], test = beer_testing_set[, c("ABV_Scaled1", "IBU_Scaled1")],
+    model <- knn(train = beer_training_set[, c("ABV_Scaled", "ABV_Scaled")], test = beer_testing_set[, c("ABV_Scaled", "ABV_Scaled")],
                  cl = beer_training_set$Beer_TYPE, k = i, prob = FALSE)
     # create the confusion matrix
     cm <- confusionMatrix(data = model, reference = beer_testing_set$Beer_TYPE)
@@ -551,7 +560,7 @@ accs %>%
   geom_line(y = accs$Specificity, color = "blue")
 
 # get the best accuracy row
-best_accuracy <- filter(accs, accs$Accuracy == max(accs$Accuracy))
+best_accuracy <- filter(accs, accs$Accuracy == max(accs$Accuracy)) %>% top_n(1)
 
 # plot the results and mark the best accuracy:
 accs %>%
@@ -564,13 +573,13 @@ accs %>%
   theme_economist()
 #KNN model with Optimal K value
 # formula: Beer Type ~ ABV + IBU with K = 85, 
-indices <- sample(1:n, size = round(split_perc * n))
-beer_training_set <- beer_breweries_with_beer_type[indices,]
-beer_testing_set <- beer_breweries_with_beer_type[-indices,]
-model <- knn(train = beer_training_set[, c("ABV", "IBU")], test = beer_testing_set[, c("ABV", "IBU")],
-             cl = beer_training_set$Beer_TYPE, k = 85)
-# create a confusion matrix:
-cm <- confusionMatrix(data = model, reference = beer_testing_set$Beer_TYPE)
+# indices <- sample(1:n, size = round(split_perc * n))
+# beer_training_set <- beer_breweries_with_beer_type[indices,]
+# beer_testing_set <- beer_breweries_with_beer_type[-indices,]
+# model <- knn(train = beer_training_set[, c("ABV", "IBU")], test = beer_testing_set[, c("ABV", "IBU")],
+#              cl = beer_training_set$Beer_TYPE, k = 85)
+# # create a confusion matrix:
+# cm <- confusionMatrix(data = model, reference = beer_testing_set$Beer_TYPE)
 ```
 
 ```{r 9. ABV & IBU Distribution By City in the State Of Colorado.}
