@@ -86,13 +86,12 @@ head(beers_data_cleaned)
 # verify no missing data.
 breweries_missing_data_df <- breweries_data_cleaned %>% sapply(function(x) sum(is.na(x))) 
 
-
-
-# creating a bar plot to visualize the count of breweries in different US states.
+# create a count by state data frame
 breweries_state_count <- breweries_data_cleaned %>% 
   group_by(State) %>%
   summarise(Count = n())
 
+# creating a bar plot to visualize the count of breweries in different US states.
 breweries_state_count %>%
   ggplot(mapping = aes(x = reorder(State, +Count))) +
   geom_bar(mapping = aes(y = Count), stat = "identity") + 
@@ -108,6 +107,7 @@ breweries_state_count <- merge(breweries_state_count,us_states, by.x = "State", 
 breweries_state_count <- left_join(us_state_map_data, breweries_state_count, by = c("region" = "StateName"))
 breweries_state_count <- left_join(breweries_state_count, us_state_center_geo, by = c("region" = "region"))
 
+# plot heatmap for breweries count by state
 breweries_state_count %>%
 ggplot(mapping = aes(x = long, y = lat, group = group, fill = Count)) +
   geom_polygon() +
@@ -124,16 +124,23 @@ ggplot(mapping = aes(x = long, y = lat, group = group, fill = Count)) +
 
 
 ```{r 2.Merge beer data with the breweries data. Print the first 6 observations}
+# Q2. Merge beer data with the breweries data. 
+#Print the first 6 observations and the last six observations to check the merged file. 
 
 # merge breweries & beers data based on Brewery_id column.
 beer_breweries <- left_join(beers_data_cleaned, breweries_data_cleaned, by = c("Brewery_id" = "Brew_ID"))
 # change column names for clarity:
 colnames(beer_breweries)[colnames(beer_breweries) == "Name.x"] <- "Beer_Name"
 colnames(beer_breweries)[colnames(beer_breweries) == "Name.y"] <- "Brewery_Name"
+
+#Print the first 6 observations
 head(beer_breweries)
+#Print the last 6 observations
+tail(beer_breweries)
 ```
 
-```{r plot missing values function}
+```{r create function to reuse for plotting missing values}
+
 # function to create a bar plot to visualize the count of missing values in each column of a given data frame
 plot_missing_values <- function(df) {
   # get the names of columns with missing values
@@ -142,14 +149,14 @@ plot_missing_values <- function(df) {
   # calc missing values count for each column
   missing_values_count <- df %>%
     sapply(function(x) sum(is.na(x)))
-  
-  # create dataframe for columns with total number of mising values
+    
+  # create data frame for columns with total number of missing values
   missing_values_df <- data.frame(
     column_name = columns_with_missing_values,
     missing_values_total = as.vector(sapply(columns_with_missing_values, function(x) {
                                               if(is.na(missing_values_count[x])) 0 else missing_values_count[x]
                                                  })))
-  
+  # plot missing values by column  
   missing_values_df %>%
     ggplot(mapping = aes(x = column_name, y = missing_values_total)) +
     geom_bar(stat = "identity") + 
@@ -166,6 +173,14 @@ plot_missing_values <- function(df) {
 }
 ```
 ```{r 3.Address the missing values in each column}
+# Q3.	Address the missing values in each column. Include a short mention of if you are assuming the data to be MCAR, MAR or NMAR. 
+
+# Within the beer's dataset, we have encountered a challenge — specifically, 62 (3%) missing values for Beer Alcohol Content (ABV) and a more substantial 1005 (42%) missing values for Beer bitterness (IBU). 
+
+# Before carrying out our analysis, we have elected to impute these missing values by assigning the mean value of available data grouped by both City and Style. Then, for the remaining missing values, imputed by means of style, and finally, imputed the remaining values by state.  
+# 
+# As a result, we ended up with only 7 missing IBU values, and those will be omitted in further analysis. 
+
 # the following chunk of code performs various data manipulation and imputation to handle missing values
 # with plots to visualize missing values in each feature and visualize missing values by state.
 
@@ -181,11 +196,12 @@ beer_breweries_summary_with_missing_values <- beer_breweries_with_missing_values
 
 beer_breweries %>% sapply(function(x) sum(is.na(x))) 
 
-
+# create data frame for missing values by state
 missing_values_by_state <- beer_breweries %>% 
   group_by(State) %>%
   summarise(ibu_na = sum(is.na(IBU)), abv_na = sum(is.na(ABV)), count = n())
 
+# plot missing values by state with total observation and the class of missing vlaue.
 missing_values_by_state %>% ggplot(mapping = aes(x = reorder(State, +count))) +
   geom_bar(aes(y = count, fill = "Total Observations"), stat = "identity") +
   geom_bar(aes(y = ibu_na, fill = "IBU NA"), stat = "identity") +
@@ -197,7 +213,7 @@ missing_values_by_state %>% ggplot(mapping = aes(x = reorder(State, +count))) +
   #scale_fill_identity(name = '', guide = 'legend',labels = c('IBV NA', 'IBU NA', 'Total Observations')) +
   scale_fill_manual(values = c("Total Observations" = "grey27", "IBU NA" = "forestgreen", "ABV NA" = "firebrick1")) +
   theme_economist()
-
+# use the function to plot the missing values by state
 plot_missing_values(beer_breweries)
 
 # calc mean of ABV & IBU by city, state, and style:
@@ -205,6 +221,7 @@ abv_ibu_mean_grouped_by_style_city <- beer_breweries %>%
   group_by(Style, City) %>%
   summarize(IBU = mean(.data[["IBU"]], na.rm = TRUE), ABV  = mean(.data[["ABV"]], na.rm = TRUE))
 
+#loop through beer_breweries to impute missing values by mean of City & Style
 for(i in 1:nrow(beer_breweries)) {
   if(is.na(beer_breweries[i,"ABV"])) {
     sub_abv = abv_ibu_mean_grouped_by_style_city %>%
@@ -218,6 +235,7 @@ for(i in 1:nrow(beer_breweries)) {
     beer_breweries[i,"IBU"] <- sub_ibu[1,"IBU"][1,1]
   }
 }
+# use the function to plot the missing values by state
 plot_missing_values(beer_breweries)
 
 beer_breweries %>% 
@@ -228,6 +246,7 @@ abv_ibu_mean_grouped_by_city <- beer_breweries %>%
   select(City,ABV, IBU) %>%
   summarize_at(vars(ABV, IBU), mean, na.rm = TRUE)
 
+#loop through beer_breweries to impute missing values by mean of City
 for(i in 1:nrow(beer_breweries)) {
   if(is.na(beer_breweries[i,"ABV"])) {
     sub_abv = abv_ibu_mean_grouped_by_city %>%
@@ -241,6 +260,7 @@ for(i in 1:nrow(beer_breweries)) {
     beer_breweries[i,"IBU"] <- sub_ibu[1,"IBU"][1,1]
   }
 }
+# use the function to plot the missing values by state
 plot_missing_values(beer_breweries)
 
 beer_breweries %>% 
@@ -251,6 +271,7 @@ abv_ibu_mean_grouped_by_state <- beer_breweries %>%
   select(State,ABV, IBU) %>%
   summarize_at(vars(ABV, IBU), mean, na.rm = TRUE)
 
+#loop through beer_breweries to impute missing values by mean of State
 for(i in 1:nrow(beer_breweries)) {
   if(is.na(beer_breweries[i,"ABV"])) {
     sub_abv = abv_ibu_mean_grouped_by_state %>%
@@ -264,7 +285,9 @@ for(i in 1:nrow(beer_breweries)) {
     beer_breweries[i,"IBU"] <- sub_ibu[1,"IBU"][1,1]
   }
 }
+# check the remaining missing values
 beer_breweries %>% sapply(function(x) sum(is.na(x)))
+# use the function to plot the missing values by state
 plot_missing_values(beer_breweries)
 
 #compare mean & median before and after fixing the values:
@@ -275,7 +298,7 @@ beer_breweries_summary_after_fixing_missing_values <- beer_breweries %>%
             IBU_Median  = median(.data[["IBU"]], na.rm = TRUE), 
             ABV_Median  = median(.data[["ABV"]], na.rm = TRUE))
 
-# ABV mean before & after:
+# plot for ABV mean with & without missing values:
 ggplot() +
   geom_boxplot(data = beer_breweries_with_missing_values,
                mapping = aes(x = 0, y = ABV)) +
@@ -296,7 +319,7 @@ ggplot() +
   ylab("ABV") +
   theme_economist()
 
-# IBU mean before & after:
+# plot for IBU mean with & wihtout missing values:
 ggplot() +
   geom_boxplot(data = beer_breweries_with_missing_values,
                mapping = aes(x = 0, y = IBU)) +
@@ -320,6 +343,32 @@ ggplot() +
 ```
 
 ```{r 4.Compute the median alcohol content and international bitterness unit for each state. Plot a bar chart to compare}
+# Q4.	Compute the median alcohol content and international bitterness unit for each state. Plot a bar chart to compare.
+
+# Now, regarding the Alcohol by Volume (ABV) values across different states in the U.S. 
+# 
+# Kentucky stands out with the highest ABV median value, a remarkable 0.065. This implies that, on average, beers in Kentucky tend to have a significantly higher alcohol content than the rest of the states. 
+# 
+# Washington D.C. and West Virginia closely follow Kentucky in this regard with impressive ABV medians of 0.0625 and 0.062, respectively. 
+# 
+# On the other hand, we find Utah on the opposite end of the spectrum with the lowest ABV median value, measuring at just 0.04. This suggests that, in Utah, beers have a notably lower average alcohol content. 
+# 
+# New Jersey and Kansas are near the bottom of the ABV rankings, making them second and third last in terms of ABV values with 0.046 and 0.05, respectively. 
+# 
+# Approximately 11 states have ABV medians equal to or exceeding 0.06. The data strongly suggests that these states have a distinct tendency towards higher alcohol content in their beers. 
+
+# Regarding the IBU values across different states in the U.S. 
+# 
+# Idaho stands out with the highest IBU median value, a remarkable 91. This implies that, on average, beers in Idaho tend to have a significantly higher bitterness than the rest of the states. 
+# 
+# New Mexico and Illinois closely follow in this regard with IBU medians of 83.5 and 70, respectively. 
+# 
+# On the other hand, we find Utah on the opposite end of the spectrum with the lowest IBU median value, measuring at just 15. This suggests that, in Utah, beers have a Notably lower bitterness. It is worth noting that Utah had the lowest ABV value as well.  
+# 
+# Arkansas and Kansas are near the bottom of the ABV rankings, making them second and third last in terms of ABV values with 17 and 20, respectively. 
+
+# These insights could be incredibly beneficial when tailoring product offerings to meet the preferences of specific regions, as data suggest that different states indeed have distinct tastes regarding the bitterness and alchol content of their beers. 
+
 # calc median IBU & ABV by state
 state_median_abv_ibu <- beer_breweries %>% 
   group_by(State) %>%
@@ -354,6 +403,16 @@ state_median_abv_ibu %>%
 ```
 
 ```{r Maximum alcoholic (ABV) beer By State & State with max maximum bitter (IBU) beer}
+# Q5. Which state has the maximum alcoholic (ABV) beer? Which state has the most bitter (IBU) beer?
+
+# Regarding the max ABV by State. 
+# 
+# Colorado takes the lead, with the maximum ABV value reaching an impressive 0.128. 
+# 
+# On the other end of the spectrum, we find Delaware, with the lowest maximum ABV value, at just 0.055. This suggests that the beers available in Delaware tend to have lower alcohol content on average. 
+# 
+# Here lies a significant opportunity for Budweiser to work closely with communities to install breathalyzers and other safety measures to mitigate DUI in states and cities with the highest ABV. This initiative not only benefits the local communities but also demonstrates Budweiser's unwavering dedication to responsible consumption   
+
 # calculates and visualizes the maximum ABV & IBU by us state
 # calc max ABV by state
 max_abv_by_state <- beer_breweries %>% 
@@ -393,6 +452,8 @@ max_ibu_by_state %>%
 ```
 
 ```{r 6.summary statistics and distribution of the ABV variable.}
+# Q6.	Comment on the summary statistics and distribution of the ABV variable.
+# Most ABV values are between 0.05 & 0.067. Mean & Median are close, which indicates a tendency toward normal distribution across states. 
 
 # calc summary of ABV values
 summary(beer_breweries$ABV)
