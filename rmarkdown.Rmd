@@ -577,4 +577,17 @@ model <- knn(train = beer_training_set[, c("ABV", "IBU")], test = beer_testing_s
 cm <- confusionMatrix(data = model, reference = beer_testing_set$Beer_TYPE)
 
 ```
+```{r 9 Added distribution of ABV and IBU in the state of COlorado}
+#Ploted ABV and IBU by City in state of Colorado
+beer_breweries_with_beer_type %>% 
+  filter(State == "CO")%>% 
+  group_by(City) %>% 
+  ggplot(mapping = aes(x = ABV, y = IBU, color = City)) +
+  geom_point() +
+  scale_y_continuous(breaks = seq(0, 160, by = 20)) +
+  ggtitle("ABV & IBU Distribution in CO") +
+  xlab("ABV") +
+  theme_economist()
 ```
+
+
