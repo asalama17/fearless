@@ -473,6 +473,8 @@ beer_breweries %>%
 
 ```{r 7.relationship between the bitterness of the beer and its alcoholic content}
 # create visualizations for the relationship between ABV & IBU
+#This plot below shows the relationship between IBU and ABV. Data Suggest that the IPA IBU mean & median are higher than ALE mean and median. Data Suggest that the IPA ABV mean & median are higher than the ALE mean and median ALE. ABV has a wider distribution. This might decrease the accuracy of our prediction model and will require further optimizations.
+
 beer_breweries %>%
   ggplot(mapping = aes(x = ABV, y = IBU)) +
   geom_point(na.rm = TRUE) +
@@ -492,6 +494,8 @@ beer_breweries %>%
   ggpairs(columns = c("ABV", "IBU"))
 ```
 ```{r 8.Difference with respect to IBU and ABV between IPAs and ALE}
+#We used KNN modeling to identify the difference with respect to IBU and ABV.WeTested K values: 1: 100 with 20 iterations for each k and calculate the average accuracy for each k. The plot by runnning the code below shows how the accuracy of the kNN model changes with different values of k. K = 85 provides the highest accuracy on our testing data set.
+
 #Classify data by beer type
 beer_breweries$Is_IPA = ifelse(str_detect(beer_breweries$Style, regex("IPA", ignore_case = TRUE)), TRUE, FALSE)
 beer_breweries$Is_ALE = ifelse(!str_detect(beer_breweries$Style, regex("IPA", ignore_case = TRUE)) & (str_detect(beer_breweries$Beer_Name, regex("Ale", ignore_case = TRUE)) |
@@ -644,6 +648,8 @@ accs %>%
 ```
 
 ```{r 9. ABV & IBU Distribution By City in the State Of Colorado.}
+#Looking deeper into ABV and IBU distribution in Colorado, there looks like there is also distinct IBU and ABV distribution by each city.Visually, data suggest that Cities within the CO State have distinct tastes regarding the bitterness and alcohol content of their beers.We advise that Budweiser use the data to tailor products based on cities within states.
+
 #plot ABV and IBU by City in state of Colorado
 beer_breweries_with_beer_type %>% 
   filter(State == "CO")%>% 
